@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pencatatan Hutang</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .btn-submit {
+      background-color: #28a745;
+      color: white;
+    }
+    .btn-reset {
+      background-color: #dc3545;
+      color: white;
+      margin-top: 15px;
+    }
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      background: #e9ecef;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    .btn-action {
+      padding: 5px 8px;
+      font-size: 12px;
+      margin-right: 2px;
+    }
+    .btn-pay {
+      background-color: #17a2b8;
+      color: white;
+    }
+    .btn-delete {
+      background-color: #ffc107;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Catatan Hutang</h2>
+
+  <form id="debtForm">
+    <div class="form-group">
+      <label for="name">Nama / Keterangan</label>
+      <input type="text" id="name" placeholder="Contoh: Bayar Pinjaman A" required>
+    </div>
+    <div class="form-group">
+      <label for="amount">Jumlah Hutang (Rp)</label>
+      <input type="number" id="amount" placeholder="Contoh: 500000" required>
+    </div>
+    <button type="submit" class="btn-submit">Tambah Hutang</button>
+  </form>
+
+  <div class="summary">
+    <div>Total Hutang: <br><span id="totalDebt" style="color: #dc3545;">Rp 0</span></div>
+    <div>Sisa Hutang: <br><span id="remainingDebt" style="color: #007bff;">Rp 0</span></div>
+  </div>
+
+  <h3>Daftar Hutang</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Keterangan</th>
+        <th>Awal</th>
+        <th>Sisa</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="debtTableBody">
+    </tbody>
+  </table>
+
+  <button id="resetBtn" class="btn-reset">Reset Semua Data</button>
+</div>
+
+<script>
+  let debts = JSON.parse(localStorage.getItem('my_debts')) || [];
+
+  function formatRupiah(number) {
+    return 'Rp ' + Number(number).toLocaleString('id-ID');
+  }
+
+  function saveAndRender() {
+    localStorage.setItem('my_debts', JSON.stringify(debts));
+    render();
+  }
+
+  function render() {
+    const tbody = document.getElementById('debtTableBody');
+    tbody.innerHTML = '';
+
+    let total = 0;
+    let remaining = 0;
+
+    debts.forEach((item, index) => {
+      total += Number(item.amount);
+      remaining += Number(item.remaining);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.name}</td>
+        <td>${formatRupiah(item.amount)}</td>
+        <td>${formatRupiah(item.remaining)}</td>
+        <td>
+          <button class="btn-action btn-pay" onclick="payDebt(${index})">Bayar</button>
+          <button class="btn-action btn-delete" onclick="deleteDebt(${index})">Hapus</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('totalDebt').innerText = formatRupiah(total);
+    document.getElementById('remainingDebt').innerText = formatRupiah(remaining);
+  }
+
+  document.getElementById('debtForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nameInput = document.getElementById('name');
+    const amountInput = document.getElementById('amount');
+
+    const name = nameInput.value.trim();
+    const amount = Number(amountInput.value);
+
+    if (name && amount > 0) {
+      debts.push({
+        name: name,
+        amount: amount,
+        remaining: amount
+      });
+      nameInput.value = '';
+      amountInput.value = '';
+      saveAndRender();
+    }
+  });
+
+  function payDebt(index) {
+    const payAmount = prompt(`Bayar hutang "${debts[index].name}" sebesar:`, 0);
+    if (payAmount !== null) {
+      const payment = Number(payAmount);
+      if (!isNaN(payment) && payment > 0) {
+        debts[index].remaining = Math.max(0, debts[index].remaining - payment);
+        saveAndRender();
+      }
+    }
+  }
+
+  function deleteDebt(index) {
+    if (confirm(`Yakin ingin menghapus item "${debts[index].name}"?`)) {
+      debts.splice(index, 1);
+      saveAndRender();
+    }
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', function() {
+    if (confirm('PERINGATAN: Apakah Anda yakin ingin menghapus SEMUA data hutang?')) {
+      debts = [];
+      localStorage.removeItem('my_debts');
+      render();
+    }
+  });
+
+  render();
+</script>
+
+</body>
+</html>
